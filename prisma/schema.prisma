@@ -8,8 +8,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-
-
 model Alert {
   id         Int      @id @default(autoincrement())
   elderly    String
@@ -20,26 +18,26 @@ model Alert {
   time       String
   createdAt  DateTime @default(now())
 
-  mediaUrl   String?
-  source     String?
+  mediaUrl String?
+  source   String?
 
   acknowledgedAt DateTime?
   resolvedAt     DateTime?
 
   residentId Int?
   resident   Resident? @relation(fields: [residentId], references: [id], onDelete: SetNull)
-
-
 }
 
 model Device {
-  id         Int      @id @default(autoincrement())
-  deviceId   String   @unique
+  id         Int       @id @default(autoincrement())
+  deviceId   String    @unique
   name       String?
   room       String?
   lastSeenAt DateTime?
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  residents Resident[]
 }
 
 model Resident {
@@ -47,5 +45,10 @@ model Resident {
   name      String   @unique
   room      String?
   createdAt DateTime @default(now())
-  alerts    Alert[]
+
+  // ✅ link to Device.id
+  deviceDbId Int?
+  device     Device? @relation(fields: [deviceDbId], references: [id], onDelete: SetNull)
+
+  alerts Alert[]
 }
