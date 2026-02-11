@@ -2,15 +2,14 @@ const express = require("express")
 const router = express.Router()
 const prisma = require("../lib/prisma")
 
-// GET /api/residents  (include linked device + alerts)
+// GET /api/residents  (now includes device info)
 router.get("/", async (req, res) => {
   try {
     const rows = await prisma.resident.findMany({
-      include: {
-        device: true,
-        alerts: true,
-      },
       orderBy: { id: "desc" },
+      include: {
+        device: true, // include linked camera/device
+      },
     })
     return res.json(rows)
   } catch (err) {
@@ -30,7 +29,6 @@ router.post("/", async (req, res) => {
 
     const created = await prisma.resident.create({
       data: { name, room },
-      include: { device: true, alerts: true },
     })
 
     return res.json({ ok: true, created })
@@ -38,7 +36,7 @@ router.post("/", async (req, res) => {
     console.error(err)
 
     // Prisma duplicate name
-    if (err && err.code === "P2002") {
+    if (err.code === "P2002") {
       return res.status(409).json({ ok: false, error: "Resident name already exists" })
     }
 
@@ -60,46 +58,48 @@ router.patch("/:id", async (req, res) => {
         ...(name !== undefined ? { name } : {}),
         ...(room !== undefined ? { room } : {}),
       },
-      include: { device: true, alerts: true },
+      include: { device: true },
     })
 
     return res.json({ ok: true, updated })
   } catch (err) {
     console.error(err)
-
-    if (err && err.code === "P2002") {
-      return res.status(409).json({ ok: false, error: "Resident name already exists" })
-    }
-
     return res.status(500).json({ ok: false, error: "Failed to update resident" })
   }
 })
 
 /**
  * PATCH /api/residents/:id/assign-device
- * Body: { "deviceId": 1 }   // Device.id (DB id), NOT deviceId string
+ * body: { "deviceId": 2 }
+ * Links Grandpa Aung -> Device row id=2
  */
 router.patch("/:id/assign-device", async (req, res) => {
   try {
     const residentId = Number(req.params.id)
-    const deviceDbId = Number(req.body?.deviceId)
+    if (!residentId) return res.status(400).json({ ok: false, error: "Invalid resident id" })
 
-    if (Number.isNaN(residentId) || residentId <= 0) {
-      return res.status(400).json({ ok: false, error: "Invalid resident id" })
-    }
-    if (Number.isNaN(deviceDbId) || deviceDbId <= 0) {
-      return res.status(400).json({ ok: false, error: "deviceId must be a number (Device.id)" })
-    }
-
-    const device = await prisma.device.findUnique({ where: { id: deviceDbId } })
-    if (!device) {
-      return res.status(404).json({ ok: false, error: "Device not found" })
+    const { deviceId } = req.body || {}
+    const deviceRowId = Number(deviceId)
+    if (!deviceRowId) {
+      return res.status(400).json({ ok: false, error: "deviceId (Device.id) is required" })
     }
 
+    // Make sure resident exists
+    const resident = await prisma.resident.findUnique({ where: { id: residentId } })
+    if (!resident) return res.status(404).json({ ok: false, error: "Resident not found" })
+
+    // Make sure device exists & active
+    const device = await prisma.device.findUnique({ where: { id: deviceRowId } })
+    if (!device) return res.status(404).json({ ok: false, error: "Device not found" })
+    if (device.isActive === false) {
+      return res.status(409).json({ ok: false, error: "Device is inactive" })
+    }
+
+    // Assign link (Resident.deviceId = Device.id)
     const updated = await prisma.resident.update({
       where: { id: residentId },
-      data: { deviceDbId },
-      include: { device: true, alerts: true },
+      data: { deviceId: deviceRowId },
+      include: { device: true },
     })
 
     return res.json({ ok: true, updated })
@@ -111,19 +111,17 @@ router.patch("/:id/assign-device", async (req, res) => {
 
 /**
  * PATCH /api/residents/:id/unassign-device
+ * Removes the link
  */
 router.patch("/:id/unassign-device", async (req, res) => {
   try {
     const residentId = Number(req.params.id)
-
-    if (Number.isNaN(residentId) || residentId <= 0) {
-      return res.status(400).json({ ok: false, error: "Invalid resident id" })
-    }
+    if (!residentId) return res.status(400).json({ ok: false, error: "Invalid resident id" })
 
     const updated = await prisma.resident.update({
       where: { id: residentId },
-      data: { deviceDbId: null },
-      include: { device: true, alerts: true },
+      data: { deviceId: null },
+      include: { device: true },
     })
 
     return res.json({ ok: true, updated })
