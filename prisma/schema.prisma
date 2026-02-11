@@ -46,10 +46,10 @@ model Resident {
   room      String?
   createdAt DateTime @default(now())
 
-  // ✅ NEW: resident → camera link
-  deviceId  Int?
+  deviceId  Int?     @unique
   device    Device?  @relation(fields: [deviceId], references: [id])
 
   alerts    Alert[]
 }
+
 
