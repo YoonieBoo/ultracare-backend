@@ -19,6 +19,10 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true });
 });
 
+app.get("/debug", (req, res) => {
+  res.send("NEW DEPLOY WORKING");
+});
+
 
 // =========================
 // API KEY MIDDLEWARE
