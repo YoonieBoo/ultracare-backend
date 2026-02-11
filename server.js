@@ -15,6 +15,11 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true });
+});
+
+
 // =========================
 // API KEY MIDDLEWARE
 // =========================
@@ -28,7 +33,17 @@ function requireApiKey(req, res, next) {
   next();
 }
 
-app.use("/api", requireApiKey);
+// PUBLIC health check
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true });
+});
+
+// Protect real APIs
+app.use("/api/devices", requireApiKey);
+app.use("/api/residents", requireApiKey);
+app.use("/api/events", requireApiKey);
+app.use("/api/alerts", requireApiKey);
+
 
 // =========================
 // MULTER (UPLOAD)
