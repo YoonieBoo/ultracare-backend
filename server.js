@@ -184,11 +184,18 @@ app.patch("/api/alerts/:id", async (req, res) => {
 
 // GET residents
 app.get("/api/residents", async (req, res) => {
-  const residents = await prisma.resident.findMany({
-    orderBy: { id: "asc" },
-  });
-  res.json(residents);
+  try {
+    const residents = await prisma.resident.findMany({
+      orderBy: { id: "asc" },
+      include: { device: true }, // ✅ include linked camera
+    });
+    res.json(residents);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: "Failed to fetch residents" });
+  }
 });
+
 
 // POST resident
 app.post("/api/residents", async (req, res) => {
@@ -245,6 +252,69 @@ app.patch("/api/residents/:id", async (req, res) => {
     return res.status(500).json({ ok: false, error: "Failed to update resident" });
   }
 });
+
+// =========================
+// ASSIGN DEVICE TO RESIDENT ✅
+// =========================
+
+app.patch("/api/residents/:id/assign-device", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: "Invalid id" });
+
+    const { deviceId } = req.body || {};
+    const did = Number(deviceId);
+    if (!did) return res.status(400).json({ ok: false, error: "deviceId is required (number)" });
+
+    // Check resident exists
+    const resident = await prisma.resident.findUnique({ where: { id } });
+    if (!resident) return res.status(404).json({ ok: false, error: "Resident not found" });
+
+    // Check device exists
+    const device = await prisma.device.findUnique({ where: { id: did } });
+    if (!device) return res.status(404).json({ ok: false, error: "Device not found" });
+
+    if (device.isActive === false) {
+      return res.status(409).json({ ok: false, error: "Device is disabled" });
+    }
+
+    const updated = await prisma.resident.update({
+      where: { id },
+      data: { deviceId: did },
+      include: { device: true },
+    });
+
+    return res.json({ ok: true, updated });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to assign device" });
+  }
+});
+
+// =========================
+// UNASSIGN DEVICE FROM RESIDENT ✅
+// =========================
+app.patch("/api/residents/:id/unassign-device", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: "Invalid id" });
+
+    const resident = await prisma.resident.findUnique({ where: { id } });
+    if (!resident) return res.status(404).json({ ok: false, error: "Resident not found" });
+
+    const updated = await prisma.resident.update({
+      where: { id },
+      data: { deviceId: null },
+      include: { device: true },
+    });
+
+    return res.json({ ok: true, updated });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to unassign device" });
+  }
+});
+
 
 // DELETE resident (safe delete only if no active alerts)
 app.delete("/api/residents/:id", async (req, res) => {
