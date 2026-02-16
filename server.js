@@ -570,9 +570,7 @@ app.post("/api/events", async (req, res) => {
 app.post("/api/upload", upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false, error: "No file uploaded" });
 
-  // Return a FULL URL so iOS can play it directly
-  const mediaUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
-
+  const mediaUrl = `https://${req.get("host")}/uploads/${req.file.filename}`;
   return res.json({ ok: true, mediaUrl });
 });
 
