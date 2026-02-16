@@ -60,7 +60,10 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max
+});
 
 // =========================
 // ALERT ROUTES
@@ -282,6 +285,53 @@ app.patch("/api/residents/:id/assign-device", async (req, res) => {
       where: { id },
       data: { deviceId: did },
       include: { device: true },
+    });
+
+    return res.json({ ok: true, updated });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to assign device" });
+  }
+});
+// =========================
+// ASSIGN DEVICE TO RESIDENT ✅
+// =========================
+app.patch("/api/residents/:id/assign-device", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: "Invalid resident id" });
+
+    const { deviceId } = req.body || {};
+    const deviceInt = Number(deviceId);
+    if (!deviceInt) {
+      return res.status(400).json({ ok: false, error: "deviceId (number) is required" });
+    }
+
+    const resident = await prisma.resident.findUnique({ where: { id } });
+    if (!resident) return res.status(404).json({ ok: false, error: "Resident not found" });
+
+    const device = await prisma.device.findUnique({ where: { id: deviceInt } });
+    if (!device) return res.status(404).json({ ok: false, error: "Device not found" });
+
+    if (device.isActive === false) {
+      return res.status(409).json({ ok: false, error: "Device is disabled (inactive)" });
+    }
+
+    // OPTIONAL safety: ensure device isn't already assigned to someone else
+    const alreadyUsed = await prisma.resident.findFirst({
+      where: { deviceId: deviceInt },
+    });
+    if (alreadyUsed && alreadyUsed.id !== id) {
+      return res.status(409).json({
+        ok: false,
+        error: "Device already assigned to another resident",
+        assignedResidentId: alreadyUsed.id,
+      });
+    }
+
+    const updated = await prisma.resident.update({
+      where: { id },
+      data: { deviceId: deviceInt },
     });
 
     return res.json({ ok: true, updated });
@@ -518,10 +568,12 @@ app.post("/api/events", async (req, res) => {
 // =========================
 
 app.post("/api/upload", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  if (!req.file) return res.status(400).json({ ok: false, error: "No file uploaded" });
 
-  const url = `/uploads/${req.file.filename}`;
-  res.json({ ok: true, mediaUrl: url });
+  // Return a FULL URL so iOS can play it directly
+  const mediaUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
+  return res.json({ ok: true, mediaUrl });
 });
 
 // =========================
