@@ -1,5 +1,12 @@
 require("dotenv").config();
 
+console.log("CLOUDINARY loaded?",
+  !!process.env.CLOUDINARY_CLOUD_NAME,
+  !!process.env.CLOUDINARY_API_KEY,
+  !!process.env.CLOUDINARY_API_SECRET,
+  "secretLen=", (process.env.CLOUDINARY_API_SECRET || "").length
+);
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -8,6 +15,7 @@ const multer = require("multer");
 const prisma = require("./lib/prisma");
 console.log("prisma.device exists?", !!prisma.device);
 
+const cloudinary = require("./cloudinary");
 
 const app = express();
 
@@ -47,21 +55,14 @@ app.use("/api/devices", requireApiKey);
 app.use("/api/residents", requireApiKey);
 app.use("/api/events", requireApiKey);
 app.use("/api/alerts", requireApiKey);
+app.use("/api/upload", requireApiKey);
 
 
 // =========================
-// MULTER (UPLOAD)
+// MULTER (UPLOAD) - Cloudinary (memory storage)
 // =========================
-const storage = multer.diskStorage({
-  destination: "uploads",
-  filename: (req, file, cb) => {
-    const safeName = Date.now() + "_" + file.originalname.replace(/\s+/g, "_");
-    cb(null, safeName);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max
 });
 
@@ -567,13 +568,35 @@ app.post("/api/events", async (req, res) => {
 // UPLOAD
 // =========================
 
-app.post("/api/upload", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ ok: false, error: "No file uploaded" });
+app.post("/api/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ ok: false, error: "No file uploaded" });
 
-  const mediaUrl = `https://${req.get("host")}/uploads/${req.file.filename}`;
-  return res.json({ ok: true, mediaUrl });
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: "video",
+          folder: "ultracare/falls",
+        },
+        (err, uploaded) => {
+          if (err) reject(err);
+          else resolve(uploaded);
+        }
+      );
+
+      stream.end(req.file.buffer);
+    });
+
+    return res.json({
+      ok: true,
+      mediaUrl: result.secure_url,
+      mediaId: result.public_id,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
-
 // =========================
 // SEED
 // =========================
