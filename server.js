@@ -196,6 +196,29 @@ app.patch("/api/alerts/:id", async (req, res) => {
   }
 });
 
+// PATCH alert media (set Cloudinary URL after upload)
+app.patch("/api/alerts/:id/media", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: "Invalid id" });
+
+    const { mediaUrl } = req.body || {};
+    if (!mediaUrl || typeof mediaUrl !== "string") {
+      return res.status(400).json({ ok: false, error: "mediaUrl is required" });
+    }
+
+    const updated = await prisma.alert.update({
+      where: { id },
+      data: { mediaUrl },
+    });
+
+    return res.json({ ok: true, updated });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to update mediaUrl" });
+  }
+});
+
 // =========================
 // RESIDENT ROUTES
 // =========================
