@@ -1,5 +1,12 @@
 require("dotenv").config();
 
+const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc");
+const timezone = require("dayjs/plugin/timezone");
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 console.log("CLOUDINARY loaded?",
   !!process.env.CLOUDINARY_CLOUD_NAME,
   !!process.env.CLOUDINARY_API_KEY,
@@ -16,6 +23,7 @@ const prisma = require("./lib/prisma");
 console.log("prisma.device exists?", !!prisma.device);
 
 const cloudinary = require("./cloudinary");
+
 
 const app = express();
 

@@ -24,7 +24,9 @@ router.get("/", async (req, res) => {
       confidence: a.confidence,
       time: a.time,
       status: a.status,
-      createdAt: a.createdAt,
+      createdAt: dayjs(a.createdAt)
+  .tz("Asia/Bangkok")
+  .format("YYYY-MM-DD HH:mm:ss"),
       mediaUrl: a.mediaUrl,
       source: a.source,
 
@@ -56,14 +58,19 @@ router.get("/latest", async (req, res) => {
     });
 
     if (!latest) return res.json([]);
+    
 
     return res.json([
-      {
-        ...latest,
-        displayName: latest.resident?.name || latest.elderly || "Unknown",
-        residentExists: !!latest.resident,
-      },
-    ]);
+  {
+    ...latest,
+    createdAt: dayjs(latest.createdAt)
+      .tz("Asia/Bangkok")
+      .format("YYYY-MM-DD HH:mm:ss"),
+
+    displayName: latest.resident?.name || latest.elderly || "Unknown",
+    residentExists: !!latest.resident,
+  },
+]);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to fetch latest alert" });
