@@ -3,7 +3,12 @@ const { prisma } = require("../lib/prisma");
 
 const router = express.Router();
 
+const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc");
+const timezone = require("dayjs/plugin/timezone");
 
+dayjs.extend(utc);
+dayjs.extend(timezone);
 // =========================
 // GET /api/alerts
 // =========================
@@ -60,16 +65,29 @@ router.get("/latest", async (req, res) => {
     if (!latest) return res.json([]);
     
 
-    return res.json([
+   return res.json([
   {
-    ...latest,
+    id: latest.id,
+    elderly: latest.elderly,
+    room: latest.room,
+    type: latest.type,
+    confidence: latest.confidence,
+    status: latest.status,
+    time: latest.time,
+    mediaUrl: latest.mediaUrl,
+    source: latest.source,
+    acknowledgedAt: latest.acknowledgedAt,
+    resolvedAt: latest.resolvedAt,
+    residentId: latest.residentId,
+    resident: latest.resident,
+
     createdAt: dayjs(latest.createdAt)
       .tz("Asia/Bangkok")
       .format("YYYY-MM-DD HH:mm:ss"),
 
     displayName: latest.resident?.name || latest.elderly || "Unknown",
     residentExists: !!latest.resident,
-  },
+  }
 ]);
   } catch (err) {
     console.error(err);
