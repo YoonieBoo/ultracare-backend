@@ -562,8 +562,8 @@ app.post("/api/events", async (req, res) => {
         type,
         confidence: Number(confidence),
         time:
-          time ||
-          new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  time ||
+  dayjs().tz("Asia/Bangkok").format("hh:mm A"),
         status: "New",
         mediaUrl: mediaUrl || null,
         source: source || "pi",
