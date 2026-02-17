@@ -3,9 +3,11 @@ require("dotenv").config();
 const dayjs = require("dayjs");
 const utc = require("dayjs/plugin/utc");
 const timezone = require("dayjs/plugin/timezone");
-
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
+const TZ = "Asia/Bangkok";
+const fmtBKK = (d) => dayjs.utc(d).tz(TZ).format("YYYY-MM-DD HH:mm:ss");
 
 console.log("CLOUDINARY loaded?",
   !!process.env.CLOUDINARY_CLOUD_NAME,
@@ -94,7 +96,7 @@ app.get("/api/alerts", async (req, res) => {
       confidence: a.confidence,
       time: a.time,
       status: a.status,
-      createdAt: a.createdAt,
+      createdAt: fmtBKK(a.createdAt),
       mediaUrl: a.mediaUrl,
       source: a.source,
 
@@ -124,12 +126,15 @@ app.get("/api/alerts/latest", async (req, res) => {
     if (!latest) return res.json([]);
 
     return res.json([
-      {
-        ...latest,
-        displayName: latest.resident?.name || latest.elderly || "Unknown",
-        residentExists: !!latest.resident,
-      },
-    ]);
+  {
+    ...latest,
+    createdAt: fmtBKK(latest.createdAt),
+    displayName: latest.resident?.name || latest.elderly || "Unknown",
+    residentExists: !!latest.resident,
+  },
+]);
+
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to fetch latest alert" });
@@ -150,11 +155,12 @@ app.get("/api/alerts/:id", async (req, res) => {
     if (!alert) return res.status(404).json({ ok: false, error: "Alert not found" });
 
     return res.json({
-      ...alert,
-      displayName: alert.resident?.name || alert.elderly || "Unknown",
-      residentExists: !!alert.resident,
-      residentDisplayName: alert.resident ? alert.resident.name : "Resident deleted",
-    });
+  ...alert,
+  createdAt: fmtBKK(alert.createdAt),
+  displayName: alert.resident?.name || alert.elderly || "Unknown",
+  residentExists: !!alert.resident,
+  residentDisplayName: alert.resident ? alert.resident.name : "Resident deleted",
+});
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to fetch alert" });
