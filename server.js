@@ -50,7 +50,9 @@ app.get("/debug", (req, res) => {
   res.send("NEW DEPLOY WORKING");
 });
 
-
+app.get("/", (req, res) => {
+  res.json({ ok: true, service: "ultracare-backend" });
+});
 // =========================
 // API KEY MIDDLEWARE
 // =========================
