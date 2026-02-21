@@ -6,6 +6,10 @@ const timezone = require("dayjs/plugin/timezone");
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+const authRoutes = require("./routes/auth");
+const subscriptionRoutes = require("./routes/subscription");
+const appDevicesRoutes = require("./routes/appDevices");
+
 const TZ = "Asia/Bangkok";
 const fmtBKK = (d) => dayjs.utc(d).tz(TZ).format("YYYY-MM-DD HH:mm:ss");
 
@@ -18,6 +22,8 @@ console.log("CLOUDINARY loaded?",
 
 const express = require("express");
 const cors = require("cors");
+const pushRoutes = require("./routes/push");
+
 const path = require("path");
 const multer = require("multer");
 
@@ -31,6 +37,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
+app.use("/api/auth", authRoutes);
+app.use("/api/subscription", subscriptionRoutes);
+app.use("/api/app/devices", appDevicesRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.get("/api/health", (req, res) => {
@@ -67,6 +76,7 @@ app.use("/api/events", requireApiKey);
 app.use("/api/alerts", requireApiKey);
 app.use("/api/upload", requireApiKey);
 
+app.use("/api/push", pushRoutes);
 
 // =========================
 // MULTER (UPLOAD) - Cloudinary (memory storage)

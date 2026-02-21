@@ -3,3 +3,7 @@ node_modules
 .env
 
 /generated/prisma
+
+secrets/
+*.p8
+firebase-service-account.json
