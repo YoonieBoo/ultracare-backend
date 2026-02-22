@@ -128,10 +128,14 @@ router.get("/stats", requireAuth, async (req, res) => {
         where: { createdAt: { gte: startOfDay, lt: endOfDay } },
       });
 
-      recentAlertsRaw = await prisma.event.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      });
+      recentAlerts = await prisma.alert.findMany({
+  orderBy: { createdAt: "desc" },
+  take: 10,
+  include: {
+    resident: true,
+    device: true,
+  },
+});
     }
     // ---------- Prisma Alert path ----------
     else if (prisma.alert && typeof prisma.alert.count === "function") {
