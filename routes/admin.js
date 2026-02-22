@@ -81,10 +81,10 @@ router.get("/stats", requireAuth, async (req, res) => {
 
       return {
         id: a.id,
-        timestamp: a.createdAt,        // frontend uses alert.timestamp
-        deviceId,                      // frontend shows this in Device ID column
-        householdName,                 // frontend shows this in Household column
-        residentName,                  // frontend shows this in Resident column
+        timestamp: a.createdAt, // frontend uses alert.timestamp
+        deviceId, // frontend shows this in Device ID column
+        householdName, // frontend shows this in Household column
+        residentName, // frontend shows this in Resident column
         type: a.type,
         confidence: toPercent(a.confidence), // frontend already prints "%"
         status: String(a.status || "").toUpperCase(),
