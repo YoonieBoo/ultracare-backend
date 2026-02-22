@@ -3,8 +3,7 @@ const express = require("express");
 const prisma = require("../lib/prisma");
 const { requireAuth } = require("../lib/auth");
 
-// If your devices are still in SQLite (db.js), we can count them too.
-// If you don't have db.js in backend root, adjust the path or remove this block.
+// Optional: fallback if devices are still in SQLite
 let db = null;
 try {
   db = require("../db"); // your existing sqlite db helper
@@ -21,17 +20,14 @@ const router = express.Router();
 router.get("/stats", requireAuth, async (req, res) => {
   try {
     // 1) TOTAL USERS (Household Admins)
-    // Your "users" table is Prisma-based (since you can sign up/login and get prisma user id)
     const totalHouseholdAdmins = await prisma.user.count();
 
     // 2) ACTIVE PRO SUBSCRIPTIONS
-    // Your subscription model exists in Prisma (you showed routes/subscription.js using prisma.subscription)
     const activeProSubscriptions = await prisma.subscription.count({
       where: { plan: "PRO", status: "ACTIVE" },
     });
 
     // 3) TOTAL DEVICES (platform-wide)
-    // We try Prisma first (if you have prisma.device), else fallback to SQLite devices table.
     let totalDevices = 0;
 
     if (prisma.device && typeof prisma.device.count === "function") {
@@ -42,8 +38,6 @@ router.get("/stats", requireAuth, async (req, res) => {
     }
 
     // 4) ALERTS TODAY + RECENT ALERTS
-    // You might have prisma.event OR prisma.alert depending on your schema.
-    // We'll try prisma.event first, then prisma.alert.
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
@@ -81,6 +75,39 @@ router.get("/stats", requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("[ADMIN stats] error:", err);
+    return res.status(500).json({ ok: false, error: "Server error" });
+  }
+});
+
+/**
+ * GET /api/admin/devices
+ * Platform-wide device list for the admin dashboard (Devices tab)
+ */
+router.get("/devices", requireAuth, async (req, res) => {
+  try {
+    // 1) Prisma path (preferred)
+    if (prisma.device && typeof prisma.device.findMany === "function") {
+      const devices = await prisma.device.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+      return res.json({ ok: true, count: devices.length, devices });
+    }
+
+    // 2) SQLite fallback (if devices still stored there)
+    if (db) {
+      const devices = db.prepare(`SELECT * FROM devices ORDER BY createdAt DESC`).all();
+      return res.json({ ok: true, count: devices.length, devices });
+    }
+
+    // 3) No device store found
+    return res.json({
+      ok: true,
+      count: 0,
+      devices: [],
+      note: "No prisma.device model and no sqlite devices table available.",
+    });
+  } catch (err) {
+    console.error("[ADMIN devices] error:", err);
     return res.status(500).json({ ok: false, error: "Server error" });
   }
 });
