@@ -10,6 +10,8 @@ const authRoutes = require("./routes/auth");
 const subscriptionRoutes = require("./routes/subscription");
 const appDevicesRoutes = require("./routes/appDevices");
 
+const householdAdminsRoutes = require("./routes/householdAdmins");
+
 const TZ = "Asia/Bangkok";
 const fmtBKK = (d) => dayjs.utc(d).tz(TZ).format("YYYY-MM-DD HH:mm:ss");
 
@@ -41,6 +43,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/app/devices", appDevicesRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/api/household-admins", requireApiKey, householdAdminsRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true });
