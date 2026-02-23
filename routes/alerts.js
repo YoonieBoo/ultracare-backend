@@ -3,6 +3,22 @@ const { prisma } = require("../lib/prisma");
 
 const router = express.Router();
 
+function toIsoTimestamp(createdAt) {
+  if (!createdAt) return null;
+  if (createdAt instanceof Date) return createdAt.toISOString();
+
+  const s = String(createdAt);
+
+  // already ISO
+  if (s.includes("T")) return s;
+
+  // "YYYY-MM-DD HH:mm:ss" -> "YYYY-MM-DDTHH:mm:ssZ"
+  if (s.includes(" ") && s.length >= 19) return s.replace(" ", "T") + "Z";
+
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 const dayjs = require("dayjs");
 const utc = require("dayjs/plugin/utc");
 const timezone = require("dayjs/plugin/timezone");
