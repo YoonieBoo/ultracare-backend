@@ -7,8 +7,11 @@ const { requireSubscriptionChosen } = require("../middleware/requireSubscription
 const router = express.Router();
 
 router.get("/", requireAuth, requireSubscriptionChosen(), async (req, res) => {
+  const userId = req.userId ?? req.user?.id;
+  if (!userId) return res.status(401).json({ ok: false, error: "Unauthorized" });
+
   const devices = await prisma.device.findMany({
-    where: { userId: req.userId },
+    where: { userId: userId },
     orderBy: { id: "asc" },
   });
 
@@ -23,22 +26,25 @@ router.get("/", requireAuth, requireSubscriptionChosen(), async (req, res) => {
 
 router.post("/claim", requireAuth, requireSubscriptionChosen(), async (req, res) => {
   try {
+    const userId = req.userId ?? req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "Unauthorized" });
+
     const { deviceId } = req.body || {};
     if (!deviceId) return res.status(400).json({ ok: false, error: "deviceId is required" });
 
     // 1️⃣ Check if device exists
-const existingDevice = await prisma.device.findUnique({
-  where: { deviceId }
-});
+    const existingDevice = await prisma.device.findUnique({
+      where: { deviceId }
+    });
 
-if (!existingDevice) {
-  return res.status(404).json({
-    ok: false,
-    error: "Device not found"
-  });
-}
+    if (!existingDevice) {
+      return res.status(404).json({
+        ok: false,
+        error: "Device not found"
+      });
+    }
 
-    const currentCount = await prisma.device.count({ where: { userId: req.userId } });
+    const currentCount = await prisma.device.count({ where: { userId: userId } });
     if (currentCount >= req.deviceLimit) {
       return res.status(409).json({
         ok: false,
@@ -51,11 +57,11 @@ if (!existingDevice) {
     const device = await prisma.device.findUnique({ where: { deviceId } });
     if (!device) return res.status(404).json({ ok: false, error: "Device not found" });
     if (device.isActive === false) return res.status(409).json({ ok: false, error: "Device is disabled" });
-    if (device.userId && device.userId !== req.userId) return res.status(409).json({ ok: false, error: "Device already claimed" });
+    if (device.userId && device.userId !== userId) return res.status(409).json({ ok: false, error: "Device already claimed" });
 
     const updated = await prisma.device.update({
       where: { deviceId },
-      data: { userId: req.userId },
+      data: { userId: userId },
     });
 
     return res.json({ ok: true, device: updated });

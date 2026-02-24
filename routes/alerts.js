@@ -25,12 +25,24 @@ const timezone = require("dayjs/plugin/timezone");
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+
 // =========================
 // GET /api/alerts
 // =========================
 router.get("/", async (req, res) => {
   try {
+    const userId = req.user?.id;
+
     const alerts = await prisma.alert.findMany({
+      ...(userId
+        ? {
+            where: {
+              device: {
+                userId: userId,
+              },
+            },
+          }
+        : {}),
       orderBy: { createdAt: "desc" },
       take: 50,
       include: {
@@ -45,9 +57,7 @@ router.get("/", async (req, res) => {
       confidence: a.confidence,
       time: a.time,
       status: a.status,
-      createdAt: dayjs(a.createdAt)
-  .tz("Asia/Bangkok")
-  .format("YYYY-MM-DD HH:mm:ss"),
+      createdAt: dayjs(a.createdAt).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"),
       mediaUrl: a.mediaUrl,
       source: a.source,
 
@@ -67,50 +77,60 @@ router.get("/", async (req, res) => {
   }
 });
 
-
 // =========================
 // GET /api/alerts/latest
 // =========================
 router.get("/latest", async (req, res) => {
   try {
+    const userId = req.user?.id;
+
     const latest = await prisma.alert.findFirst({
+      ...(userId
+        ? {
+            where: {
+              device: {
+                userId: userId,
+              },
+            },
+          }
+        : {}),
       orderBy: { createdAt: "desc" },
       include: { resident: true },
     });
 
     if (!latest) return res.json([]);
-    
 
-   return res.json([
-  {
-    id: latest.id,
-    elderly: latest.elderly,
-    room: latest.room,
-    type: latest.type,
-    confidence: latest.confidence,
-    status: latest.status,
-    time: latest.time,
-    mediaUrl: latest.mediaUrl,
-    source: latest.source,
-    acknowledgedAt: latest.acknowledgedAt,
-    resolvedAt: latest.resolvedAt,
-    residentId: latest.residentId,
-    resident: latest.resident,
+    return res.json([
+      {
+        id: latest.id,
+        elderly: latest.elderly,
+        room: latest.room,
+        type: latest.type,
+        confidence: latest.confidence,
+        status: latest.status,
+        time: latest.time,
+        mediaUrl: latest.mediaUrl,
+        source: latest.source,
+        acknowledgedAt: latest.acknowledgedAt,
+        resolvedAt: latest.resolvedAt,
+        residentId: latest.residentId,
+        resident: latest.resident,
 
-    createdAt: dayjs(latest.createdAt)
-      .tz("Asia/Bangkok")
-      .format("YYYY-MM-DD HH:mm:ss"),
+        createdAt: dayjs(latest.createdAt)
+          .tz("Asia/Bangkok")
+          .format("YYYY-MM-DD HH:mm:ss"),
 
-    displayName: latest.resident?.name || latest.elderly || "Unknown",
-    residentExists: !!latest.resident,
-  }
-]);
+        displayName: latest.resident?.name || latest.elderly || "Unknown",
+        residentExists: !!latest.resident,
+      },
+    ]);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ ok: false, error: "Failed to fetch latest alert" });
+    return res
+      .status(500)
+      .json({ ok: false, error: "Failed to fetch latest alert" });
   }
 });
-
 
 // =========================
 // GET /api/alerts/:id
@@ -122,8 +142,19 @@ router.get("/:id", async (req, res) => {
       return res.status(400).json({ ok: false, error: "Invalid id" });
     }
 
-    const alert = await prisma.alert.findUnique({
-      where: { id },
+    const userId = req.user?.id;
+
+    const alert = await prisma.alert.findFirst({
+      where: {
+        id,
+        ...(userId
+          ? {
+              device: {
+                userId: userId,
+              },
+            }
+          : {}),
+      },
       include: { resident: true },
     });
 
@@ -133,9 +164,7 @@ router.get("/:id", async (req, res) => {
 
     return res.json({
       ...alert,
-      residentDisplayName: alert.resident
-        ? alert.resident.name
-        : "Resident deleted",
+      residentDisplayName: alert.resident ? alert.resident.name : "Resident deleted",
       residentExists: !!alert.resident,
     });
   } catch (err) {
@@ -143,7 +172,6 @@ router.get("/:id", async (req, res) => {
     return res.status(500).json({ ok: false, error: "Failed to fetch alert" });
   }
 });
-
 
 // =========================
 // PATCH /api/alerts/:id
@@ -179,6 +207,5 @@ router.patch("/:id", async (req, res) => {
     return res.status(500).json({ error: "Failed to update alert" });
   }
 });
-
 
 module.exports = router;
