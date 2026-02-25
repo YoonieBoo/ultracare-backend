@@ -141,4 +141,44 @@ router.get("/devices", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/falls/monthly", requireAuth, async (req, res) => {
+  try {
+    const year = new Date().getFullYear();
+
+    const start = new Date(`${year}-01-01T00:00:00.000Z`);
+    const end = new Date(`${year}-12-31T23:59:59.999Z`);
+
+    const alerts = await prisma.alert.findMany({
+      where: {
+        type: "FALL_DETECTED",
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      },
+      select: {
+        createdAt: true,
+      },
+    });
+
+    const monthlyCounts = Array(12).fill(0);
+
+    alerts.forEach((alert) => {
+      const month = new Date(alert.createdAt).getMonth();
+      monthlyCounts[month]++;
+    });
+
+    return res.json({
+      ok: true,
+      year,
+      data: monthlyCounts,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      message: "Failed to fetch monthly fall stats",
+    });
+  }
+});
+
 module.exports = router;
