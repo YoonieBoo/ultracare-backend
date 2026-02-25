@@ -12,6 +12,7 @@ const appDevicesRoutes = require("./routes/appDevices");
 
 const householdAdminsRoutes = require("./routes/householdAdmins");
 
+
 const adminRoutes = require("./routes/admin");
 const appAlertsRoutes = require("./routes/appAlerts");
 
