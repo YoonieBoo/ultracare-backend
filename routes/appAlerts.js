@@ -133,15 +133,27 @@ router.patch("/:id", requireAuth, requireSubscriptionChosen(), async (req, res) 
     const updated = await prisma.alert.update({
       where: { id },
       data,
-      select: {
-        id: true,
-        status: true,
-        acknowledgedAt: true,
-        resolvedAt: true,
+      include: {
+        resident: true,
+        device: true,
       },
     });
 
-    return res.json(updated);
+    return res.json({
+      id: updated.id,
+      type: updated.type,
+      status: updated.status,
+      acknowledgedAt: updated.acknowledgedAt,
+      resolvedAt: updated.resolvedAt,
+      confidence: updated.confidence,
+      time: updated.time,
+      createdAt: updated.createdAt,
+      displayName: updated.resident?.name || updated.elderly || null,
+      room: updated.room,
+      mediaUrl: updated.mediaUrl,
+      residentId: updated.residentId,
+      deviceId: updated.device?.deviceId || null,
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to update alert status" });
