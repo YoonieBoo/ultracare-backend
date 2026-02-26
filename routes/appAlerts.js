@@ -19,10 +19,28 @@ router.get("/", requireAuth, requireSubscriptionChosen(), async (req, res) => {
       },
       orderBy: { createdAt: "desc" },
       take: 50,
-      include: { resident: true },
+      include: {
+        resident: true,
+        device: true,
+      },
     });
 
-    return res.json({ ok: true, alerts });
+    const safeAlerts = alerts.map(a => ({
+      id: a.id,
+      type: a.type,
+      status: a.status,
+      confidence: a.confidence,
+      time: a.time,
+      createdAt: a.createdAt,
+      displayName: a.resident?.name || a.elderly || null,
+      room: a.room,
+      mediaUrl: a.mediaUrl,
+      residentId: a.residentId,
+      deviceId: a.device?.deviceId || null,
+    }));
+
+    return res.json({ ok: true, alerts: safeAlerts });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to fetch alerts" });
@@ -42,12 +60,30 @@ router.get("/latest", requireAuth, requireSubscriptionChosen(), async (req, res)
         device: { userId: userId },
       },
       orderBy: { createdAt: "desc" },
-      include: { resident: true },
+      include: {
+        resident: true,
+        device: true,   // ✅ IMPORTANT FIX
+      },
     });
 
     if (!latest) return res.json({ ok: true, alerts: [] });
 
-    return res.json({ ok: true, alerts: [latest] });
+    const safeLatest = {
+      id: latest.id,
+      type: latest.type,
+      status: latest.status,
+      confidence: latest.confidence,
+      time: latest.time,
+      createdAt: latest.createdAt,
+      displayName: latest.resident?.name || latest.elderly || null,
+      room: latest.room,
+      mediaUrl: latest.mediaUrl,
+      residentId: latest.residentId,
+      deviceId: latest.device?.deviceId || null,
+    };
+
+    return res.json({ ok: true, alerts: [safeLatest] });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to fetch latest alert" });
