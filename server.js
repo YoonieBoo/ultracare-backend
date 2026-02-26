@@ -586,15 +586,38 @@ app.delete("/api/devices/:id", async (req, res) => {
 app.post("/api/events", async (req, res) => {
   try {
     const {
-      elderly,
-      room,
-      type,
-      confidence,
-      time,
-      mediaUrl,
-      source,
-      residentId: incomingResidentId,
-    } = req.body || {};
+  elderly,
+  room,
+  type,
+  confidence,
+  time,
+  mediaUrl,
+  source,
+  deviceId, // ✅ "CAM 11" from Python
+  residentId: incomingResidentId,
+} = req.body || {};
+let deviceFkId = null;
+
+if (deviceId) {
+  // 1) Find a device row where Device.deviceId matches "CAM 11"
+  const deviceRow = await prisma.device.findUnique({
+    where: { deviceId: String(deviceId) },
+  });
+
+  // 2) If we can't find it, stop and return an error (so you know the data is wrong)
+  if (!deviceRow) {
+    return res.status(400).json({
+      ok: false,
+      error: "deviceId not found in devices table",
+      receivedDeviceId: deviceId,
+    });
+  }
+
+  // 3) If found, store the numeric primary key (Device.id)
+  deviceFkId = deviceRow.id;
+}
+
+console.log("📷 incoming deviceId:", deviceId, "-> deviceFkId:", deviceFkId);
 
     let residentId = null;
     let elderlyFinal = elderly;
@@ -623,20 +646,19 @@ app.post("/api/events", async (req, res) => {
     }
 
     const created = await prisma.alert.create({
-      data: {
-        elderly: elderlyFinal,
-        room: roomFinal,
-        type,
-        confidence: Number(confidence),
-        time:
-  time ||
-  dayjs().tz("Asia/Bangkok").format("hh:mm A"),
-        status: "New",
-        mediaUrl: mediaUrl || null,
-        source: source || "pi",
-        residentId,
-      },
-    });
+  data: {
+    elderly: elderlyFinal,
+    room: roomFinal,
+    type,
+    confidence: Number(confidence),
+    time: time || dayjs().tz("Asia/Bangkok").format("hh:mm A"),
+    status: "New",
+    mediaUrl: mediaUrl || null,
+    source: source || "pi",
+    residentId,
+    deviceId: deviceFkId, // ✅ correct (numeric FK)   // ✅ ADD THIS LINE
+  },
+});
 
     return res.json({ ok: true, alert: created });
   } catch (err) {
