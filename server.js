@@ -560,6 +560,39 @@ app.patch("/api/devices/:id", async (req, res) => {
   }
 });
 
+// =========================
+// ASSIGN DEVICE TO HOUSEHOLD (USER) ✅
+// =========================
+app.patch("/api/devices/:id/assign-household", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: "Invalid device id" });
+
+    const { userId } = req.body || {};
+    const uid = Number(userId);
+    if (!uid) return res.status(400).json({ ok: false, error: "userId is required (number)" });
+
+    // device exists?
+    const device = await prisma.device.findUnique({ where: { id } });
+    if (!device) return res.status(404).json({ ok: false, error: "Device not found" });
+
+    // user exists?
+    const user = await prisma.user.findUnique({ where: { id: uid } });
+    if (!user) return res.status(404).json({ ok: false, error: "User not found" });
+
+    // assign
+    const updated = await prisma.device.update({
+      where: { id },
+      data: { userId: uid },
+    });
+
+    return res.json({ ok: true, updated });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to assign household" });
+  }
+});
+
 // DELETE device = DISABLE (admin)
 app.delete("/api/devices/:id", async (req, res) => {
   try {
