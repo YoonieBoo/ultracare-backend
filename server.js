@@ -219,9 +219,16 @@ app.patch("/api/alerts/:id", async (req, res) => {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ error: "Invalid id" });
 
-    const { status } = req.body || {};
-    const allowed = ["New", "Acknowledged", "Resolved"];
-    if (!allowed.includes(status)) {
+    const rawStatus = String(req.body?.status || "").trim();
+    const normalizedMap = {
+      new: "New",
+      acknowledged: "Acknowledged",
+      acknowledge: "Acknowledged",
+      checked: "Acknowledged",
+      resolved: "Resolved",
+    };
+    const status = normalizedMap[rawStatus.toLowerCase()];
+    if (!status) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
