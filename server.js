@@ -107,10 +107,31 @@ app.get("/api/alerts", async (req, res) => {
     const alerts = await prisma.alert.findMany({
       orderBy: { createdAt: "desc" },
       take: 50,
-      include: { resident: true },
+      include: {
+        resident: {
+          include: {
+            device: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+        device: {
+          include: {
+            user: true,
+          },
+        },
+      },
     });
 
-    const safeAlerts = alerts.map((a) => ({
+    const safeAlerts = alerts.map((a) => {
+      const householdEmail =
+        a.device?.user?.email ||
+        a.resident?.device?.user?.email ||
+        null;
+
+      return {
       id: a.id,
       type: a.type,
       room: a.room,
@@ -120,6 +141,7 @@ app.get("/api/alerts", async (req, res) => {
       createdAt: fmtBKK(a.createdAt),
       mediaUrl: a.mediaUrl,
       source: a.source,
+      householdEmail,
 
       displayName: a.resident?.name || a.elderly || "Unknown",
       residentExists: !!a.resident,
@@ -127,7 +149,8 @@ app.get("/api/alerts", async (req, res) => {
 
       acknowledgedAt: a.acknowledgedAt || null,
       resolvedAt: a.resolvedAt || null,
-    }));
+      };
+    });
 
     return res.json(safeAlerts);
   } catch (err) {
