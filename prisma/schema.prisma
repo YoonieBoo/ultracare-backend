@@ -9,26 +9,22 @@ datasource db {
 }
 
 model Alert {
-  id         Int      @id @default(autoincrement())
-  elderly    String
-  room       String
-  type       String
-  confidence Float
-  status     String   @default("New")
-  time       String
-  createdAt  DateTime @default(now())
-
-  mediaUrl String?
-  source   String?
-
+  id             Int       @id @default(autoincrement())
+  elderly        String
+  room           String
+  type           String
+  confidence     Float
+  status         String    @default("New")
+  time           String
+  createdAt      DateTime  @default(now())
+  mediaUrl       String?
+  source         String?
   acknowledgedAt DateTime?
   resolvedAt     DateTime?
-
-  residentId Int?
-  resident   Resident? @relation(fields: [residentId], references: [id], onDelete: SetNull)
-
-  deviceId Int?
-  device   Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  residentId     Int?
+  deviceId       Int?
+  device         Device?   @relation(fields: [deviceId], references: [id])
+  resident       Resident? @relation(fields: [residentId], references: [id])
 }
 
 model Device {
@@ -39,12 +35,10 @@ model Device {
   lastSeenAt DateTime?
   isActive   Boolean   @default(true)
   createdAt  DateTime  @default(now())
-
-  residents Resident[] // add this line
-  alerts    Alert[]
-
-  userId Int?
-  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId     Int?
+  alerts     Alert[]
+  user       User?     @relation(fields: [userId], references: [id])
+  residents  Resident?
 
   @@index([userId])
 }
@@ -54,11 +48,9 @@ model Resident {
   name      String   @unique
   room      String?
   createdAt DateTime @default(now())
-
-  deviceId Int?    @unique
-  device   Device? @relation(fields: [deviceId], references: [id])
-
-  alerts Alert[]
+  deviceId  Int?     @unique
+  alerts    Alert[]
+  device    Device?  @relation(fields: [deviceId], references: [id])
 }
 
 model PushToken {
@@ -69,27 +61,15 @@ model PushToken {
   updatedAt DateTime @updatedAt
 }
 
-enum Plan {
-  FREE
-  PRO
-}
-
-enum SubscriptionStatus {
-  ACTIVE
-  PENDING_PAYMENT
-}
-
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
   passwordHash String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  subscription Subscription?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  isDisabled   Boolean       @default(false)
   devices      Device[]
-
-  isDisabled Boolean @default(false)
+  subscription Subscription?
 }
 
 model Subscription {
@@ -99,6 +79,15 @@ model Subscription {
   status    SubscriptionStatus @default(ACTIVE)
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum Plan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PENDING_PAYMENT
 }
