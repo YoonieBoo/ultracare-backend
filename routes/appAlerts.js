@@ -139,7 +139,7 @@ router.patch("/:id", requireAuth, requireSubscriptionChosen(), async (req, res) 
       },
     });
 
-    return res.json({
+    const payload = {
       id: updated.id,
       type: updated.type,
       status: updated.status,
@@ -153,6 +153,12 @@ router.patch("/:id", requireAuth, requireSubscriptionChosen(), async (req, res) 
       mediaUrl: updated.mediaUrl,
       residentId: updated.residentId,
       deviceId: updated.device?.deviceId || null,
+    };
+
+    return res.json({
+      ok: true,
+      ...payload,
+      alert: payload,
     });
   } catch (err) {
     console.error(err);
