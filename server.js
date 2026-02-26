@@ -143,6 +143,8 @@ app.get("/api/alerts", async (req, res) => {
       source: a.source,
       householdEmail,
 
+      deviceId: a.device?.deviceId || null,
+
       displayName: a.resident?.name || a.elderly || "Unknown",
       residentExists: !!a.resident,
       residentId: a.residentId,
@@ -600,9 +602,14 @@ let deviceFkId = null;
 
 if (deviceId) {
   // 1) Find a device row where Device.deviceId matches "CAM 11"
-  const deviceRow = await prisma.device.findUnique({
-    where: { deviceId: String(deviceId) },
-  });
+  const deviceRow = await prisma.device.findFirst({
+  where: {
+    OR: [
+      { deviceId: String(deviceId) },  // matches CAM-562
+      { name: String(deviceId) },      // matches Cam 11
+    ],
+  },
+});
 
   // 2) If we can't find it, stop and return an error (so you know the data is wrong)
   if (!deviceRow) {
