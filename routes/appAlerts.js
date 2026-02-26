@@ -29,6 +29,8 @@ router.get("/", requireAuth, requireSubscriptionChosen(), async (req, res) => {
       id: a.id,
       type: a.type,
       status: a.status,
+      acknowledgedAt: a.acknowledgedAt,
+      resolvedAt: a.resolvedAt,
       confidence: a.confidence,
       time: a.time,
       createdAt: a.createdAt,
@@ -72,6 +74,8 @@ router.get("/latest", requireAuth, requireSubscriptionChosen(), async (req, res)
       id: latest.id,
       type: latest.type,
       status: latest.status,
+      acknowledgedAt: latest.acknowledgedAt,
+      resolvedAt: latest.resolvedAt,
       confidence: latest.confidence,
       time: latest.time,
       createdAt: latest.createdAt,
@@ -87,6 +91,60 @@ router.get("/latest", requireAuth, requireSubscriptionChosen(), async (req, res)
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to fetch latest alert" });
+  }
+});
+
+// =========================
+// PATCH /api/app/alerts/:id
+// =========================
+router.patch("/:id", requireAuth, requireSubscriptionChosen(), async (req, res) => {
+  try {
+    const userId = req.userId ?? req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "Unauthorized" });
+
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ ok: false, error: "Invalid id" });
+
+    const rawStatus = String(req.body?.status || "").trim();
+    const normalizedMap = {
+      new: "New",
+      acknowledged: "Acknowledged",
+      acknowledge: "Acknowledged",
+      checked: "Acknowledged",
+      resolved: "Resolved",
+    };
+    const status = normalizedMap[rawStatus.toLowerCase()];
+    if (!status) return res.status(400).json({ ok: false, error: "Invalid status" });
+
+    // User can update only alerts belonging to their claimed devices.
+    const existing = await prisma.alert.findFirst({
+      where: {
+        id,
+        device: { userId: userId },
+      },
+      select: { id: true },
+    });
+    if (!existing) return res.status(404).json({ ok: false, error: "Alert not found" });
+
+    const data = { status };
+    if (status === "Acknowledged") data.acknowledgedAt = new Date();
+    if (status === "Resolved") data.resolvedAt = new Date();
+
+    const updated = await prisma.alert.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        status: true,
+        acknowledgedAt: true,
+        resolvedAt: true,
+      },
+    });
+
+    return res.json({ ok: true, alert: updated });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Failed to update alert status" });
   }
 });
 
