@@ -141,7 +141,7 @@ router.patch("/:id", requireAuth, requireSubscriptionChosen(), async (req, res) 
       },
     });
 
-    return res.json({ ok: true, alert: updated });
+    return res.json(updated);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ ok: false, error: "Failed to update alert status" });
